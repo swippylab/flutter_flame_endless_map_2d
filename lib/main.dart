@@ -51,17 +51,37 @@ class GameScreen extends StatelessWidget {
 class MyGame extends FlameGame {
   final Grid grid = Grid();
   final EndlessMap endlessMap = EndlessMap();
+  final Runner runner = Runner();
+
+  double speed = 100.0;
 
   @override
   Future<void>? onLoad() {
     add(grid);
     add(endlessMap);
+    add(runner);
     return super.onLoad();
   }
 }
 
+/// Camera follows the runner.
+class Runner extends PositionComponent with HasGameRef<MyGame> {
+  @override
+  Future<void>? onLoad() {
+    gameRef.camera.followComponent(this);
+    return super.onLoad();
+  }
+
+  @override
+  void update(double dt) {
+    x += gameRef.speed * dt;
+    super.update(dt);
+  }
+}
+
+/// Set the size of tile and grid
 class Grid extends Component with HasGameRef<MyGame> {
-  late int rows = 4;
+  late int rows = 10;
   late int columns;
   late int mapColumns;
   late double tileSize;
@@ -75,22 +95,22 @@ class Grid extends Component with HasGameRef<MyGame> {
   }
 }
 
+/// Generate terrains endlessly
 class EndlessMap extends PositionComponent with HasGameRef<MyGame> {
   late final Sprite terrainSprite;
   late final List<SpriteComponent> terrainSpritePool;
 
-  double stepDistance = 0.0;
   int firstTerrainIndex = 0;
 
+  // Init terrain sprite
   @override
   Future<void> onLoad() async {
-    position.x = -gameRef.grid.tileSize;
-
     terrainSprite = Sprite(
       await Flame.images.load('terrains.png'),
       srcPosition: Vector2(4.0, 0.0),
       srcSize: Vector2(32.0, 32.0 * 10),
     );
+
     terrainSpritePool = List.generate(
       gameRef.grid.mapColumns,
       (index) => SpriteComponent(sprite: terrainSprite),
@@ -110,27 +130,23 @@ class EndlessMap extends PositionComponent with HasGameRef<MyGame> {
 
   @override
   void update(double dt) {
-    final dx = 100 * dt;
+    final dx = gameRef.speed * dt;
     final lastTerrainIndex = firstTerrainIndex == 0
         ? terrainSpritePool.length - 1
         : firstTerrainIndex - 1;
 
-    if (stepDistance + dx >= gameRef.grid.tileSize) {
-      // move the first terrain to the end
+    // When the first terrain is behind the camera,
+    if (terrainSpritePool[firstTerrainIndex].position.x +
+            gameRef.grid.tileSize <=
+        gameRef.camera.position.x + dx) {
+      // Move the first terrain to the end
       terrainSpritePool[firstTerrainIndex].size.x = gameRef.grid.tileSize;
       terrainSpritePool[firstTerrainIndex].position = Vector2(
         terrainSpritePool[lastTerrainIndex].position.x + gameRef.grid.tileSize,
         gameRef.grid.tileSize,
       );
 
-      final gap = stepDistance + dx - gameRef.grid.tileSize;
-
       firstTerrainIndex = (firstTerrainIndex + 1) % terrainSpritePool.length;
-      position.x -= dx;
-      stepDistance = gap;
-    } else {
-      position.x -= dx;
-      stepDistance += dx;
     }
 
     super.update(dx);
