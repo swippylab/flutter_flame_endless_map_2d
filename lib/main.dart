@@ -51,7 +51,7 @@ class GameScreen extends StatelessWidget {
 class MyGame extends FlameGame {
   final Grid grid = Grid();
   final EndlessMap endlessMap = EndlessMap();
-  final Runner runner = Runner();
+  final Camera runner = Camera();
 
   double speed = 100.0;
 
@@ -64,17 +64,29 @@ class MyGame extends FlameGame {
   }
 }
 
-/// Camera follows the runner.
-class Runner extends PositionComponent with HasGameRef<MyGame> {
+/// Camera
+class Camera extends PositionComponent with HasGameRef<MyGame> {
   @override
   Future<void>? onLoad() {
     gameRef.camera.followComponent(this);
     return super.onLoad();
   }
 
+  bool moveRight = true;
+
   @override
   void update(double dt) {
-    x += gameRef.speed * dt;
+    if (x + gameRef.speed * dt > gameRef.size.x + gameRef.grid.tileSize) {
+      moveRight = false;
+    } else if (x - gameRef.speed * dt < 0) {
+      moveRight = true;
+    }
+
+    if (moveRight) {
+      x += gameRef.speed * dt;
+    } else {
+      x -= gameRef.speed * dt;
+    }
     super.update(dt);
   }
 }
@@ -128,27 +140,27 @@ class EndlessMap extends PositionComponent with HasGameRef<MyGame> {
     return super.onLoad();
   }
 
-  @override
-  void update(double dt) {
-    final dx = gameRef.speed * dt;
-    final lastTerrainIndex = firstTerrainIndex == 0
-        ? terrainSpritePool.length - 1
-        : firstTerrainIndex - 1;
+  // @override
+  // void update(double dt) {
+  //   final dx = gameRef.speed * dt;
+  //   final lastTerrainIndex = firstTerrainIndex == 0
+  //       ? terrainSpritePool.length - 1
+  //       : firstTerrainIndex - 1;
 
-    // When the first terrain is behind the camera,
-    if (terrainSpritePool[firstTerrainIndex].position.x +
-            gameRef.grid.tileSize <=
-        gameRef.camera.position.x + dx) {
-      // Move the first terrain to the end
-      terrainSpritePool[firstTerrainIndex].size.x = gameRef.grid.tileSize;
-      terrainSpritePool[firstTerrainIndex].position = Vector2(
-        terrainSpritePool[lastTerrainIndex].position.x + gameRef.grid.tileSize,
-        gameRef.grid.tileSize,
-      );
+  //   // When the first terrain is behind the camera,
+  //   if (terrainSpritePool[firstTerrainIndex].position.x +
+  //           gameRef.grid.tileSize <=
+  //       gameRef.camera.position.x + dx) {
+  //     // Move the first terrain to the end
+  //     terrainSpritePool[firstTerrainIndex].size.x = gameRef.grid.tileSize;
+  //     terrainSpritePool[firstTerrainIndex].position = Vector2(
+  //       terrainSpritePool[lastTerrainIndex].position.x + gameRef.grid.tileSize,
+  //       gameRef.grid.tileSize,
+  //     );
 
-      firstTerrainIndex = (firstTerrainIndex + 1) % terrainSpritePool.length;
-    }
+  //     firstTerrainIndex = (firstTerrainIndex + 1) % terrainSpritePool.length;
+  //   }
 
-    super.update(dx);
-  }
+  //   super.update(dx);
+  // }
 }
